@@ -1,0 +1,361 @@
+---
+title: 'Coursera Data Science Capstone Project - Milestone Report'
+author: "derickj"
+date: "19 March 2016"
+output: html_document
+---
+
+## Synopsis
+
+The project requires the development of a predictive model to predict the next word that is expected to be typed when a user enters a number of words as input.  The corpus that could be used to train the model consists of a set of text files provided for download at <a href="https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip">Swiftkey.zip</a>
+
+This reports documents the initial analysis of the dataset and pre-processing steps to prepare for the development of a predictive model.
+
+The R Code used to read and analyse the data is provided in Appendix 1.
+
+```{r libraries, results = "hide", echo = FALSE, message = FALSE, warning = FALSE}
+library(knitr)
+library(RCurl)
+library(RWeka)
+library(tm)
+library(ggplot2)
+library(stringr)
+library(gridExtra)
+library(reshape2)
+```
+
+### Reading the Data
+
+The data file is loaded directly from the given URL to the current working directory.  If the zip file exists in the working directory, the load was successful and the file contents are extracted. The set of English text files are read directly from the relevant locale (final/en_US) directory source.  It was found that some of the files contain special characters (most notable Ctrl-Z), so the files could not be read as text files.  Instead, they are read as binary and then converted from UTF-8 to ASCII format to eliminate those special charcaters.
+
+While cycling through the loop to read the files, summary statistics about the file contents were also collected - such as the number of lines contained in the file, the total file size in number of characters, the maximum and avergae string lengths per line.
+
+```{r loadandread, echo = FALSE, warning = FALSE}
+#
+# Loading the file from the URL
+#
+#data_url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+zipfile <- "Swiftkey_data.zip"
+#download.file(data_url, outfile, method = "auto")
+#
+# Check whether the load was successful and if so, unzip
+#
+if(!file.exists(zipfile)) {
+    msg <- paste(zipfile, "does not exist", sep=" ")
+    stop(msg)
+}
+#unzip(zipfile)
+#
+# After investigating what was unpacked from the ZIP file, obtain a vector with all the .txt file names 
+# in the en_US locale directory
+#
+engdir <- "final/en_US"
+if(!file.exists(engdir)) {
+    msg <- paste(engdir, "does not exist in working directory", sep=" ")
+    stop(msg)
+}
+files <- list.files(engdir, pattern = "*.txt")
+if (length(files)<1)
+{
+    msg <- paste(engdir, "does not contain .txt files", sep=" ")
+    stop(msg)
+}
+#
+# Cycle through the list of file names, reading each file as binary before converting to ASCII
+#
+fullstats <- data.frame(Number = 1L, Size = 1L, MaxLen = 1L, AveLen = 1L, stringsAsFactors=FALSE)
+datanames <- c("Dummy")
+thedata <- NULL
+for (i in 1:length(files))
+{
+    dataname <- paste(engdir,files[i],sep="/")
+    con <- file(dataname, "rb")
+    textvector <- readLines(con, 
+                           n = 20000,  # Comment out for final version
+                            encoding="UTF-8")
+    close(con)
+    iconv(textvector, "UTF-8", "ascii", sub = " ")
+    # Examine and record text characteristics such as file size, number of entries, longest and average string lengths.
+    ndocs <- length(textvector)
+    nchars <- sum(nchar(textvector))
+    nlongest <- max(nchar(textvector))
+    naverage <- round(nchars/ndocs,0)
+    # Clean up the file name and add the stats for the data set to a data frame
+    dataname <- gsub(".txt","",gsub("en_US.","",files[i]))
+    datanames[length(datanames)+ 1] <- dataname
+    fullstats <- rbind(fullstats,c(ndocs,nchars,nlongest,naverage))
+    head(textvector)
+    # Keep the text for later sampling
+    thedata <- c(thedata, textvector)
+}
+```
+
+### Sampling the Data
+
+In order to speed up processing during the initial phases of the project, it was decided to only use 5% of available data, i.e., 5% of the lines read were selected randomly to retain as sample text, the rest ignored.  Later on, during model development, it is expected that a larger set of training data may be needed.   The sample data statistics were added to the stats about the original documents.
+
+Initially the data is examined and analysed at a very high level to determine what it consists of.
+
+```{r sampledata, echo = FALSE, warning = FALSE}
+#
+# Set a seed so that the sampling is reprodicible and randomly select 5% of the data strings for inclusion
+#
+set.seed(12321)
+doclen <- length(thedata)
+samplendx <- sample(doclen, round(0.05*doclen))
+thedata <- thedata[samplendx]
+# Examine and record sample characteristics such as file size, number of entries, longest and average string lengths
+ndocs <- length(thedata)
+nchars <- sum(nchar(thedata))
+nlongest <- max(nchar(thedata))
+naverage <- round(nchars/ndocs,0)
+datanames[length(datanames)+ 1] <- "sample"
+fullstats <- rbind(fullstats,c(ndocs,nchars,nlongest,naverage))
+fullstats$Source <- datanames
+fullstats <- fullstats [-1,]
+fullstats
+```
+
+### Visualise Data Characteristics
+
+The statistics about the data sets and sample data set are visualised in the following graphs.  Due to twitter functionality, its longest string is capped at 140 characters.
+
+```{r examine, echo = FALSE}
+g1 <- ggplot(data=fullstats, aes(x=Source, y=Number, fill=Source)) +
+    geom_bar(colour="black", stat="identity") + 
+    geom_text(data = fullstats, aes(x=Source,y=Number,label=Number), position="identity", size = 3) +
+    guides(fill=FALSE) + ggtitle("Number of Entries")
+g2 <- ggplot(data=fullstats, aes(x=Source, y=Size, fill=Source)) +
+    geom_bar(colour="black", stat="identity") +
+    geom_text(data = fullstats, aes(x=Source,y=Size,label=Size), position="identity", size = 3) +
+    guides(fill=FALSE) + ggtitle("Size of datasets (# characters)")
+g3 <- ggplot(data=fullstats, aes(x=Source, y=MaxLen, fill=Source)) +
+    geom_bar(colour="black", stat="identity") +
+    geom_text(data = fullstats, aes(x=Source,y=MaxLen,label=MaxLen), position="identity", size = 3) +
+    guides(fill=FALSE) + ggtitle("Longest entry (# characters)")
+g4 <- ggplot(data=fullstats, aes(x=Source, y=AveLen, fill=Source)) +
+    geom_bar(colour="black", stat="identity") +
+    geom_text(data = fullstats, aes(x=Source,y=AveLen,label=AveLen), position="identity", size = 3) +
+    guides(fill=FALSE) + ggtitle("Average length")
+grid.arrange(g1,g2,g3,g4,ncol = 2)
+```
+
+### Create Train and Test Sets from Sample Data
+
+The sample data that was selected was then combined across the sources, with 70% randomly selected as a training set, the remaining 30% of lines to be kept for later testing of the predictive model.  The two sets of text lines (training and test) were written out to text files so that further processing and analysis could pick up at this step without having to repeatedly read the large input text files.
+ 
+```{r createtrainandtest, echo = FALSE}
+#
+#  The sample text is split 70-30 into a training and test set and written to file.
+#
+trainprob <- 0.7
+doclen <- length(thedata)
+samplendx <- sample(doclen, round(trainprob*doclen))
+traindata <- thedata[samplendx]
+testdata <- thedata[-samplendx]
+rm(thedata)   # Done with this, clean memory
+trainfile <- "traintext.txt"
+writeLines(traindata,trainfile,useBytes = TRUE)
+writeLines(testdata,"testtext.txt",useBytes = TRUE)
+```
+
+```{r readtraindata, echo = FALSE}
+#
+# Read the training data from the file
+#
+trainfile <- "traintext.txt"
+if(!file.exists(trainfile)) {
+    msg <- paste(trainfile, "does not exist", sep=" ")
+    stop(msg)
+}
+traindata <- readLines(trainfile)
+#
+# Create a corpus with the training text so that the tm library could be used for analysis and processing
+#
+mycorpus <- Corpus(DirSource("./", pattern = trainfile),
+                  readerControl = list(reader = readPlain,
+                  language = "en_US",
+                  load = TRUE))
+summary(mycorpus[[1]])
+```
+
+### Pre-process and Clean the Training Data
+
+In order to analyse the text contents further, the training set is cleaned by removing punctuation, foreign characters and numbers.  It is converted to all lower case and extraneous white spaces were stripped out.  It was decided not to do any word stemming, as this could skew results when the ulitmate objective is to predict the next word of a phrase entered by a user.  For the same reason, it was also decided not to remove any stopwords (the frequently used words in the English language such as 'the', 'and', etc)  it is expected that it is entirely likely that these stopwords will also most frequently have to be suggested as next words in a predictive model.
+
+```{r cleandata, echo = FALSE}
+#
+# Function to strip out punctuation and foreign characters
+#
+removePunctuationAndForeign <- function(x) 
+{
+    # Keep only letters, numbers and spaces
+#    gsub("[[:punct:]]", " ", x)
+    x <- gsub("[^[:alnum:][:blank:]]", "", x)
+    gsub("[šžþàáâãäåçèéêëìíîïðñòóôõöùúûüý]+", "", x)
+}
+#
+# Punctuation, foreign characters and numbers are removed
+#
+mycorpus <- tm_map(mycorpus, content_transformer(removePunctuationAndForeign))
+mycorpus <- tm_map(mycorpus, removeNumbers)
+#
+# Transform to lower case
+#
+mycorpus <- tm_map(mycorpus, content_transformer(tolower))
+#
+# Strip extra white space
+#
+mycorpus <- tm_map(mycorpus, stripWhitespace)
+mycorpus <- tm_map(mycorpus, PlainTextDocument)
+```
+
+### Profanity Filtering
+
+Profanities are defined as text that may be regarded by the reader as obscene or unacceptable.  FOr the purposes of
+this report, an external list that was found on the Internet at <a href="http://www.cs.cmu.edu/~biglou/resources/bad-words.txt">this URL</a> was used to determine which words are deemed to be unacceptable.  For some reason, this included religious references and some terms which appear innocuous, but could be used in combination with other words to reflect obscene meaning.  A more sophisticated profanity filtering may rather examine such phrases, but for the purposes of the interim report, all these words were simply replaced with "PFLT" as an indication that such a word was removed. This token was placed in the strings to avoid words that do not belong together to appear associated in n-grams later on in the analysis. 
+
+```{r filterprofanity, echo = FALSE}
+#
+#  Read the bad word list
+#
+badfile <- "bad-words.txt"
+if(!file.exists(badfile)) {
+    msg <- paste(badfile, "does not exist", sep=" ")
+    stop(msg)
+}
+badwords <- readLines(badfile)
+#
+#
+#
+for (i in 1:length(badwords))
+{
+    pattern <- paste("[ \r\n^]",badwords[i],"[ \r\n]", sep ="")
+    mycorpus[[1]]$content <- gsub(pattern, " PFLT ", mycorpus[[1]]$content)
+}
+```
+
+### Analyse Training Data for Words and N-Grams
+
+The pre-processed, cleaned and filtered training set was then analysed for the most frequently used words and n-grams consistring of 2 and 3 words, respectively (called bigrams and trigrams in the remainder of this report).  Term-document matrices were developed for 2-grams and 3-grams, using the functionality available in the R tm library.
+
+The analysis includes graphic representation of aspects of each of these such as number of unique terms/n-grams, most frequently used terms/n-grams.
+
+As could be expected, the most frequent terms and n-grams mainly consist of stopwords.
+
+```{r 1grams, echo = FALSE, warning = FALSE}
+#
+# Determine frequency of words 
+# (for the moment a word is regarded as any string of charcaters surrounded by white space)
+#
+# length(mycorpus[[1]]$content)
+# sum(str_count(mycorpus[[1]]$content))
+tdm <- TermDocumentMatrix(mycorpus)
+unigrams <- data.frame(tdm$v,tdm$dimnames$Terms)
+colnames(unigrams) <- c ("tf","term")
+unigrams <- unigrams[order(unigrams$tf,decreasing=TRUE),]
+usedonce <- nrow(unigrams[unigrams$tf < 2,]) # used only once
+ngramstats <- c(1,length(unigrams$term),usedonce,unigrams$tf[1])
+unigrams <- unigrams[unigrams$tf > 3,]
+```
+
+```{r 2grams, echo = FALSE, warning = FALSE}
+delim <- ' \r\n\t'
+BigramTokenizer <- function(x) 
+{
+    NGramTokenizer(x, Weka_control(min=2, max=2, delimiters=delim))
+}
+makeTDM2 <- function(x) {
+    tdm <- TermDocumentMatrix(x, control=list(tokenize=BigramTokenizer))
+    return(tdm)
+}
+TrigramTokenizer <- function(x) 
+{
+    NGramTokenizer(x, Weka_control(min=3, max=3, delimiters=delim))
+}
+
+makeTDM3 <- function(x) {
+    tdm <- TermDocumentMatrix(x, control=list(tokenize=TrigramTokenizer))
+    return(tdm)
+}
+#
+# Determine frequency of bigrams (sequences of 2 "words") 
+#
+tdm2 <- makeTDM2(mycorpus)
+bigrams <- data.frame(tdm2$v,tdm2$dimnames$Terms)
+colnames(bigrams) <- c ("tf","term")
+bigrams <- bigrams[order(bigrams$tf,decreasing=TRUE),]
+usedonce <- nrow(bigrams[bigrams$tf<2,]) # used only once
+ngramstats <- rbind(ngramstats, c(2,length(bigrams$term),usedonce,bigrams$tf[1]))
+bigrams <- bigrams[bigrams$tf > 3,]
+```
+
+```{r 3grams, echo = FALSE, message = FALSE, warning = FALSE}
+#
+# Determine frequency of trigrams (sequences of 3 "words") 
+#
+tdm3 <- makeTDM3(mycorpus)
+trigrams <- data.frame(tdm3$v,tdm3$dimnames$Terms)
+colnames(trigrams) <- c ("tf","term")
+trigrams <- trigrams[order(trigrams$tf,decreasing=TRUE),]
+usedonce <- nrow(trigrams[trigrams$tf<2,]) # used only once
+ngramstats <- rbind(ngramstats, c(3,length(trigrams$term),usedonce,trigrams$tf[1]))
+trigrams <- trigrams[trigrams$tf > 3,]
+```
+
+```{r graphngrams, echo= FALSE, message = FALSE, warning = FALSE}
+#
+# Visualise some statistics about the n-grams
+#
+ngramstats <- data.frame(ngramstats)
+colnames(ngramstats) <- c("NTerm","UniqueTerms","UsedOnceOnly","UsedMost")
+ngramstats$NTerm <- as.factor(c("Words","2-grams","3-grams"))
+nstats <- melt(ngramstats,value.name = "Count")
+g <- ggplot(data=nstats, aes(x=variable, y=Count, fill=variable)) +
+    geom_bar(colour="black", stat="identity") +
+    facet_grid(. ~ NTerm, scales = "free_y") +
+    geom_text(data = nstats, aes(x = variable,y = Count,label = Count), position="identity", vjust = -1, size = 3) +
+    guides(fill=FALSE) + ggtitle("Word & N-Gram Frequency Analysis") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+g
+rm(nstats)
+ngramstats
+#
+#  Visualise most frequently used n-grams
+#
+g1 <- ggplot(data=unigrams[1:20,], aes(x=term, y=tf)) +
+    geom_bar(colour="black", stat="identity") + coord_flip() +
+    geom_text(data = unigrams[1:20,], aes(x=term,y=tf,label=tf), position="identity", hjust = -1, size = 3) +
+    guides(fill=FALSE) + ggtitle("Most Frequently Used Words")
+g2 <- ggplot(data=bigrams[1:20,], aes(x=term, y=tf)) +
+    geom_bar(colour="black", stat="identity") + coord_flip() +
+    geom_text(data = bigrams[1:20,], aes(x=term,y=tf,label=tf), position="identity", hjust = -1, size = 3) +
+    guides(fill=FALSE) + ggtitle("Most Frequently Used 2-grams")
+g3 <- ggplot(data=trigrams[1:20,], aes(x=term, y=tf)) +
+    geom_bar(colour="black", stat="identity") + coord_flip() +
+    geom_text(data = trigrams[1:20,], aes(x=term,y=tf,label=tf), position="identity", hjust = -1, size = 3) +
+    guides(fill=FALSE) + ggtitle("Most Frequently Used 3-grams")
+# grid.arrange(g1,g2,g3,ncol = 2)
+g1
+g2
+g3
+```
+
+### Observations and Further Steps
+
+1. The initial analysis of the data indicates that a small portion of the data (even as little as 5%) could render useful information about word and n-gram frequencies (probabilities) that would be valuable in the development of a model for predicting the next word based on user input given.
+
+2. More research is needed about the role of punctuation, numbers and rare words or terms (those occurring only nifrequently in the sample corpus).  While eliminated in the interim study, it is expected that these could be important in predictive models, and would probably need to be treated as special tokens.
+
+3. Foreign words, misspellings and names occur in the data.  It is anticipated that a dictionary reference may need to be incorporated to determine which of these would be valid words to use in the predictions, and which are so rare as to be ignored.
+
+4. Processsing and memory limitations on the Windows laptop on which the research is being conducted may force the researcher to settle for a less than ideal model as it takes a long time to process certain steps (such as profanity filtering or the development of term-document matrices).  (Attemmpts to load 20% of the data as sample were abandoned due to the excessive amount of time it took to process during this exploratory phase of the project).
+
+## References
+
+[CMU] http://www.cs.cmu.edu/~biglou/resources/bad-words.txt "List of obscene words to be filtered - downloaded on 10 March 2016"
+
+## Appendix 1 R code 
+
+```{r appendix, echo=TRUE, eval=FALSE, ref.label=all_labels()}
+```

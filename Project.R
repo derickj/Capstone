@@ -16,31 +16,64 @@ meta(engcorpus[[2]])
 head(engcorpus[[2]]$content)
 meta(engcorpus[[3]])
 head(engcorpus[[3]]$content)
-# tm_map(engcorpus, FUN = stripWhitespace)
-grep("woman",engcorpus[[3]]$content,ignore.case=TRUE)
-# or
-grepl("woman",engcorpus[[3]]$content,ignore.case=TRUE)
-# Quiz 1
-# Question 3
-ndoc <- length(engcorpus)
-maxlen <- 0
-maxndx <- 0
-objsiz <- c()
-for (i in 1:ndoc) 
-{
-  n <- max(nchar(engcorpus[[i]]$content))
-  objsiz <- c(objsiz, object.size(engcorpus[[i]]$content))
-  if (n > maxlen) 
-  {
-    maxlen <- n
-    maxndx <- i
-  }
-}
-engcorpus[[maxndx]]$meta$id
-maxlen
-objsiz
-# Question 5
-engcorpus[[3]]$content[grep("biostats",engcorpus[[3]]$content)]
-# Question 6
-engcorpus[[3]]$content[grep("^A computer once beat me at chess, but it was no match for me at kickboxing$",engcorpus[[3]]$content)]
 
+# Rweka
+library("RWeka")
+library("tm")
+
+data("crude")
+BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+tdm <- TermDocumentMatrix(crude, control = list(tokenize = BigramTokenizer))
+inspect(tdm[340:345,1:10])
+plot(tdm, terms = findFreqTerms(tdm, lowfreq = 2)[1:50], corThreshold = 0.5)
+
+crude <- as.VCorpus(crude)
+crude <- tm_map(crude, stripWhitespace)
+crude <- tm_map(crude, content_transformer(tolower))
+crude <- tm_map(crude, removeWords, stopwords("english"))
+crude <- tm_map(crude, stemDocument)
+# Sets the default number of threads to use
+options(mc.cores=1)
+tdm <- TermDocumentMatrix(crude, control=list(tokenize = NGramTokenizer))
+findFreqTerms(tdm, lowfreq = 10)
+# OR
+NGramTokenizer(crude[[1]])
+# Also see
+WOW("NGramTokenizer")
+
+# Examples from tm library
+MC_tokenizer(crude[[1]])
+scan_tokenizer(crude[[1]])
+# Custom tokenizer
+strsplit_space_tokenizer <- function(x)
+    unlist(strsplit(as.character(x), "[[:space:]]+"))
+strsplit_space_tokenizer(crude[[1]])
+
+# Another custom function
+library(ngram)
+bigramTokenizer <- function(x) {
+    x <- as.character(x)
+    
+    # Find words
+    one.list <- c()
+    tryCatch({
+        one.gram <- ngram::ngram(x, n = 1)
+        one.list <- ngram::get.ngrams(one.gram)
+    }, 
+    error = function(cond) { warning(cond) })
+    
+    # Find 2-grams
+    two.list <- c()
+    tryCatch({
+        two.gram <- ngram::ngram(x, n = 2)
+        two.list <- ngram::get.ngrams(two.gram)
+    },
+    error = function(cond) { warning(cond) })
+    
+    res <- unlist(c(one.list, two.list))
+    res[res != '']
+}
+# Then you can test the function with:
+dtmTest <- lapply(myCorpus.3, bigramTokenizer)
+# And finally:
+dtm <- DocumentTermMatrix(myCorpus.3, control = list(tokenize = bigramTokenizer))
