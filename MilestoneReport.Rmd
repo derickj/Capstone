@@ -72,7 +72,7 @@ for (i in 1:length(files))
     dataname <- paste(engdir,files[i],sep="/")
     con <- file(dataname, "rb")
     textvector <- readLines(con, 
-#                          n = 20000,  # Comment out for final version
+#                         n = 20000,  # Comment out for final version
                             encoding="UTF-8")
     close(con)
     iconv(textvector, "UTF-8", "ascii", sub = " ")
@@ -190,20 +190,25 @@ In order to analyse the text contents further, the training set is cleaned by re
 #
 removePunctuationAndForeign <- function(x) 
 {
-    # Keep only letters, numbers and spaces
-#    gsub("[[:punct:]]", " ", x)
-    x <- gsub("[^[:alnum:][:blank:]]", "", x)
-    gsub("[šžþàáâãäåçèéêëìíîïðñòóôõöùúûüý]+", "", x)
+    # Keep only letters, numbers and spaces, special treatment for certain apostrophes
+    x <- gsub("n't", "nt", x)
+    x <- gsub("'s", "s", x)
+    x <- gsub("'re", " are", x)
+    x <- gsub("'ve", " have", x)
+    x <- gsub("i'm", "i am", x)
+    x <- gsub("[^[:alnum:][:blank:]]", " ", x)
+    x <- gsub("â", "", x)
+    gsub("[šžþÃàáâãäåçèéêëìíîïðñòóôõöùúûüý¢]+", " ", x)
 }
+#
+# Transform to lower case
+#
+mycorpus <- tm_map(mycorpus, content_transformer(tolower))
 #
 # Punctuation, foreign characters and numbers are removed
 #
 mycorpus <- tm_map(mycorpus, content_transformer(removePunctuationAndForeign))
 mycorpus <- tm_map(mycorpus, removeNumbers)
-#
-# Transform to lower case
-#
-mycorpus <- tm_map(mycorpus, content_transformer(tolower))
 #
 # Strip extra white space
 #
@@ -220,23 +225,28 @@ this report, an external list that was found on the Internet at <a href="http://
 #
 #  Read the bad word list
 #
+replaceProfanity <- function(x,word) 
+{
+    pattern <- paste("[ \r\n]",word,"[ \r\n]|^",word,"[ \r\n]|[ \r\n]", word, "$", sep ="")
+    gsub(pattern, " PFLT ", x)
+}
 badfile <- "bad-words.txt"
 if(!file.exists(badfile)) {
     msg <- paste(badfile, "does not exist", sep=" ")
     stop(msg)
 }
 badwords <- readLines(badfile)
-#
-#
-#
 for (i in 1:length(badwords))
 {
-    pattern <- paste("[ \r\n]",badwords[i],"[ \r\n]", sep ="")
-    mycorpus[[1]]$content <- gsub(pattern, " PFLT ", mycorpus[[1]]$content)
+    mycorpus <- tm_map(mycorpus, content_transformer(replaceProfanity),badwords[i])
 }
 prfntylst <- grep ("PFLT", mycorpus[[1]]$content)
-msg <- paste (length(prfntylst), "words deemed unacceptable per the external list were replaced with PFLT", sep = " ")
+msg <- paste (length(prfntylst), 
+              "lines contained unacceptable words per the external list which were replaced with PFLT", 
+              sep = " ")
 print (msg)
+cleanfile <- "cleantext.txt"
+writeLines(mycorpus[[1]]$content, cleanfile, useBytes = TRUE)
 ```
 
 ### Analyse Training Data for Words and N-Grams
