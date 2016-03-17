@@ -9,7 +9,7 @@ output: html_document
 
 The project requires the development of a predictive model to predict the next word that is expected to be typed when a user enters a number of words as input.  The corpus that could be used to train the model consists of a set of text files provided for download at <a href="https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip">Swiftkey.zip</a>
 
-This reports documents the initial analysis of the dataset and pre-processing steps to prepare for the development of a predictive model.
+This report documents the initial analysis of the dataset and pre-processing steps taken to prepare for the development of a predictive model.
 
 The R Code used to read and analyse the data is provided in Appendix 1.
 
@@ -22,6 +22,7 @@ library(ggplot2)
 library(stringr)
 library(gridExtra)
 library(reshape2)
+options(scipen = 999)
 ```
 
 ### Reading the Data
@@ -71,7 +72,7 @@ for (i in 1:length(files))
     dataname <- paste(engdir,files[i],sep="/")
     con <- file(dataname, "rb")
     textvector <- readLines(con, 
-                           n = 20000,  # Comment out for final version
+#                          n = 20000,  # Comment out for final version
                             encoding="UTF-8")
     close(con)
     iconv(textvector, "UTF-8", "ascii", sub = " ")
@@ -230,9 +231,12 @@ badwords <- readLines(badfile)
 #
 for (i in 1:length(badwords))
 {
-    pattern <- paste("[ \r\n^]",badwords[i],"[ \r\n]", sep ="")
+    pattern <- paste("[ \r\n]",badwords[i],"[ \r\n]", sep ="")
     mycorpus[[1]]$content <- gsub(pattern, " PFLT ", mycorpus[[1]]$content)
 }
+prfntylst <- grep ("PFLT", mycorpus[[1]]$content)
+msg <- paste (length(prfntylst), "words deemed unacceptable per the external list were replaced with PFLT", sep = " ")
+print (msg)
 ```
 
 ### Analyse Training Data for Words and N-Grams
@@ -248,14 +252,14 @@ As could be expected, the most frequent terms and n-grams mainly consist of stop
 # Determine frequency of words 
 # (for the moment a word is regarded as any string of charcaters surrounded by white space)
 #
-# length(mycorpus[[1]]$content)
+# length(mycorpus[[1]]$Content)
 # sum(str_count(mycorpus[[1]]$content))
 tdm <- TermDocumentMatrix(mycorpus)
-unigrams <- data.frame(tdm$v,tdm$dimnames$Terms)
+unigrams <- data.frame(tdm$v, tdm$dimnames$Terms)
 colnames(unigrams) <- c ("tf","term")
-unigrams <- unigrams[order(unigrams$tf,decreasing=TRUE),]
+unigrams <- unigrams[order(unigrams$tf, decreasing=TRUE),]
 usedonce <- nrow(unigrams[unigrams$tf < 2,]) # used only once
-ngramstats <- c(1,length(unigrams$term),usedonce,unigrams$tf[1])
+ngramstats <- c(1, length(unigrams$term), usedonce, unigrams$tf[1])
 unigrams <- unigrams[unigrams$tf > 3,]
 ```
 
@@ -282,11 +286,11 @@ makeTDM3 <- function(x) {
 # Determine frequency of bigrams (sequences of 2 "words") 
 #
 tdm2 <- makeTDM2(mycorpus)
-bigrams <- data.frame(tdm2$v,tdm2$dimnames$Terms)
-colnames(bigrams) <- c ("tf","term")
-bigrams <- bigrams[order(bigrams$tf,decreasing=TRUE),]
+bigrams <- data.frame(tdm2$v, tdm2$dimnames$Terms)
+colnames(bigrams) <- c ("tf", "term")
+bigrams <- bigrams[order(bigrams$tf, decreasing=TRUE),]
 usedonce <- nrow(bigrams[bigrams$tf<2,]) # used only once
-ngramstats <- rbind(ngramstats, c(2,length(bigrams$term),usedonce,bigrams$tf[1]))
+ngramstats <- rbind(ngramstats, c(2, length(bigrams$term), usedonce, bigrams$tf[1]))
 bigrams <- bigrams[bigrams$tf > 3,]
 ```
 
@@ -295,11 +299,11 @@ bigrams <- bigrams[bigrams$tf > 3,]
 # Determine frequency of trigrams (sequences of 3 "words") 
 #
 tdm3 <- makeTDM3(mycorpus)
-trigrams <- data.frame(tdm3$v,tdm3$dimnames$Terms)
+trigrams <- data.frame(tdm3$v, tdm3$dimnames$Terms)
 colnames(trigrams) <- c ("tf","term")
-trigrams <- trigrams[order(trigrams$tf,decreasing=TRUE),]
+trigrams <- trigrams[order(trigrams$tf, decreasing=TRUE),]
 usedonce <- nrow(trigrams[trigrams$tf<2,]) # used only once
-ngramstats <- rbind(ngramstats, c(3,length(trigrams$term),usedonce,trigrams$tf[1]))
+ngramstats <- rbind(ngramstats, c(3, length(trigrams$term), usedonce, trigrams$tf[1]))
 trigrams <- trigrams[trigrams$tf > 3,]
 ```
 
@@ -308,34 +312,43 @@ trigrams <- trigrams[trigrams$tf > 3,]
 # Visualise some statistics about the n-grams
 #
 ngramstats <- data.frame(ngramstats)
-colnames(ngramstats) <- c("NTerm","UniqueTerms","UsedOnceOnly","UsedMost")
-ngramstats$NTerm <- as.factor(c("Words","2-grams","3-grams"))
+colnames(ngramstats) <- c("NTerm", "UniqueTerms", "UsedOnceOnly", "UsedMost")
+ngramstats$NTerm <- as.factor(c("Words", "2-grams", "3-grams"))
 nstats <- melt(ngramstats,value.name = "Count")
-g <- ggplot(data=nstats, aes(x=variable, y=Count, fill=variable)) +
+g <- ggplot(data=nstats, aes(x = variable, y = Count, fill = variable)) +
     geom_bar(colour="black", stat="identity") +
     facet_grid(. ~ NTerm, scales = "free_y") +
-    geom_text(data = nstats, aes(x = variable,y = Count,label = Count), position="identity", vjust = -1, size = 3) +
+    geom_text(data = nstats, aes(x = variable,y = Count,label = Count), 
+              position="identity", vjust = -1, size = 3) +
     guides(fill=FALSE) + ggtitle("Word & N-Gram Frequency Analysis") +
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
 g
 rm(nstats)
 ngramstats
+```
+
+From the data, it is seen that `r ngramstats$UniqueTerms[1]` unique words were included in the sample.  Considering that normal everyday English use require about 15000, it indicates that there are a large number of additional words. Visual inspection of the data shows that these consist of foreign words, names of people, places or things, misspelled word, and so forth.  In the case of bigrams and trigrams, it is seen that a large proportion of the unique phrases occur only once in the data `r ngramstats$UsedOnceOnly[2]` out of `r ngramstats$UniqueTerms[2]`, and `r ngramstats$UsedOnceOnly[3]` out of `r ngramstats$UniqueTerms[3]`, for 2-grams and 3-grams,respectively.  It is expected that these infrequently used phrases will not play a large role in the predictive model to be developed due to the low probability of occurrence in the corpus.  In the following graph, the number of occurrences of the 20 most frequently used words, 2-grams and 3-grams are visualised, again consisting almost exclusively of stopwords: 
+
+```{r graphwords, echo= FALSE, message = FALSE, warning = FALSE}
 #
 #  Visualise most frequently used n-grams
 #
-g1 <- ggplot(data=unigrams[1:20,], aes(x=term, y=tf)) +
+g1 <- ggplot(data=unigrams[1:20,], aes(x = term, y = tf)) +
     geom_bar(colour="black", stat="identity") + coord_flip() +
-    geom_text(data = unigrams[1:20,], aes(x=term,y=tf,label=tf), position="identity", hjust = -1, size = 3) +
+    geom_text(data = unigrams[1:20,], aes(x = term, y = tf, label = tf), 
+              position = "identity", hjust = -1, size = 3) +
     guides(fill=FALSE) + ggtitle("Most Frequently Used Words")
-g2 <- ggplot(data=bigrams[1:20,], aes(x=term, y=tf)) +
-    geom_bar(colour="black", stat="identity") + coord_flip() +
-    geom_text(data = bigrams[1:20,], aes(x=term,y=tf,label=tf), position="identity", hjust = -1, size = 3) +
-    guides(fill=FALSE) + ggtitle("Most Frequently Used 2-grams")
-g3 <- ggplot(data=trigrams[1:20,], aes(x=term, y=tf)) +
-    geom_bar(colour="black", stat="identity") + coord_flip() +
-    geom_text(data = trigrams[1:20,], aes(x=term,y=tf,label=tf), position="identity", hjust = -1, size = 3) +
-    guides(fill=FALSE) + ggtitle("Most Frequently Used 3-grams")
-# grid.arrange(g1,g2,g3,ncol = 2)
+g2 <- ggplot(data=bigrams[1:20,], aes(x = term, y = tf)) +
+    geom_bar(colour="black", stat = "identity") + coord_flip() +
+    geom_text(data = bigrams[1:20,], aes(x = term, y = tf, label = tf), 
+              position = "identity", hjust = -1, size = 3) +
+    guides(fill = FALSE) + ggtitle("Most Frequently Used 2-grams")
+g3 <- ggplot(data=trigrams[1:20,], aes(x = term, y = tf)) +
+    geom_bar(colour = "black", stat = "identity") + coord_flip() +
+    geom_text(data = trigrams[1:20,], aes(x = term, y = tf, label = tf), 
+              position="identity", hjust = -1, size = 3) +
+    guides(fill = FALSE) + ggtitle("Most Frequently Used 3-grams")
+# grid.arrange(g1,g2,g3,ncol = 2) # Text becomes to small if using grid
 g1
 g2
 g3
