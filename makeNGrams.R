@@ -43,6 +43,14 @@ makeTDM4 <- function(x) {
     tdm <- TermDocumentMatrix(x, control=list(tokenize=QuadgramTokenizer))
     return(tdm)
 }
+PentgramTokenizer <- function(x) 
+{
+    NGramTokenizer(x, Weka_control(min=5, max=5, delimiters=delim))
+}
+makeTDM5 <- function(x) {
+    tdm <- TermDocumentMatrix(x, control=list(tokenize=PentgramTokenizer))
+    return(tdm)
+}
 #
 # Determine frequency of bigrams (sequences of 2 "words") 
 #
@@ -82,3 +90,25 @@ save(tdm4,file = "tdmquadgrams.RData")
 save(quadgrams,file = "quadgrams.RData")
 msg <- paste(n, "quadgrams written to files")
 print (msg)
+#
+# Determine frequency of pentgrams (sequences of 5 "words") 
+#
+tdm5 <- makeTDM5(mycorpus)
+pentgrams <- data.frame(tdm5$v, tdm5$dimnames$Terms, stringsAsFactors = FALSE)
+colnames(pentgrams) <- c ("tf","term")
+pentgrams <- pentgrams[order(pentgrams$tf, decreasing=TRUE),]
+head(pentgrams)
+n <- length(pentgrams$tf)
+save(tdm5,file = "tdmpentgrams.RData")
+save(pentgrams,file = "pentgrams.RData")
+msg <- paste(n, "pentgrams written to files")
+print (msg)
+
+#n2 <- data.frame(tdm2$v, tdm2$dimnames$Terms, stringsAsFactors = FALSE)
+#colnames(n2) <- c ("tf","term")
+#n2words <- sapply(n2$term, str_split," ",2)
+#n2frame <- data.frame(n2words, stringsAsFactors = FALSE)
+#row.names(n2frame) <- NULL
+#rm(n2words)
+#n2a <- cbind(n2[,1],n2frame)
+#rm(n2,n2frame)
