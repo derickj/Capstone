@@ -1,23 +1,11 @@
-library(knitr)
+options("java.parameters")
+options(java.parameters = "-Xmx1g")
 library(RCurl)
 library(RWeka)
 library(tm)
-library(ggplot2)
 library(stringr)
-library(gridExtra)
 library(reshape2)
 
-unkfile <- "unktext.txt"
-mycorpus <- Corpus(DirSource("./", pattern = unkfile),
-                   readerControl = list(reader = readPlain,
-                                        language = "en_US",
-                                        load = TRUE))
-summary(mycorpus[[1]])
-print("Read the file")
-#tdm <- TermDocumentMatrix(mycorpus)
-#unigrams <- data.frame(tdm$v, tdm$dimnames$Terms, stringsAsFactors = FALSE)
-#colnames(unigrams) <- c ("tf","term")
-#unigrams <- unigrams[order(unigrams$tf, decreasing=TRUE),]
 delim <- ' \r\n\t'
 BigramTokenizer <- function(x) 
 {
@@ -51,6 +39,27 @@ makeTDM5 <- function(x) {
     tdm <- TermDocumentMatrix(x, control=list(tokenize=PentgramTokenizer))
     return(tdm)
 }
+cleanfile <- "cleantext.txt"
+mycorpus <- Corpus(DirSource("./data/", pattern = cleanfile),
+                   readerControl = list(reader = readPlain,
+                                        language = "en_US",
+                                        load = TRUE))
+#summary(mycorpus[[1]])
+print("Read the file")
+#
+# Determine frequency of words 
+#
+tdm <- TermDocumentMatrix(mycorpus)
+unigrams <- data.frame(tdm$v, tdm$dimnames$Terms, stringsAsFactors = FALSE)
+colnames(unigrams) <- c ("tf","term")
+unigrams <- unigrams[order(unigrams$tf, decreasing=TRUE),]
+n <- length(unigrams$tf)
+save (tdm,file = "data/tdmunigrams.RData")
+save (unigrams, file = "data/unigrams.RData")
+msg <- paste(n, "unigrams (words) written to files")
+print (msg)
+rm(tdm)
+
 #
 # Determine frequency of bigrams (sequences of 2 "words") 
 #
@@ -60,10 +69,11 @@ colnames(bigrams) <- c ("tf", "term")
 bigrams <- bigrams[order(bigrams$tf, decreasing=TRUE),]
 head(bigrams)
 n <- length(bigrams$tf)
-save(tdm2,file = "tdmbigrams.RData")
-save(bigrams,file = "bigrams.RData")
+save(tdm2,file = "data/tdmbigrams.RData")
+save(bigrams,file = "data/bigrams.RData")
 msg <- paste(n, "bigrams written to files")
 print (msg)
+rm(tdm2)
 #
 # Determine frequency of trigrams (sequences of 3 "words") 
 #
@@ -73,10 +83,11 @@ colnames(trigrams) <- c ("tf","term")
 trigrams <- trigrams[order(trigrams$tf, decreasing=TRUE),]
 head(trigrams)
 n <- length(trigrams$tf)
-save(tdm3,file = "tdmtrigrams.RData")
-save(trigrams,file = "trigrams.RData")
+save(tdm3,file = "data/tdmtrigrams.RData")
+save(trigrams,file = "data/trigrams.RData")
 msg <- paste(n, "trigrams written to files")
 print (msg)
+rm(tdm3)
 #
 # Determine frequency of quadgrams (sequences of 4 "words") 
 #
@@ -86,10 +97,11 @@ colnames(quadgrams) <- c ("tf","term")
 quadgrams <- quadgrams[order(quadgrams$tf, decreasing=TRUE),]
 head(quadgrams)
 n <- length(quadgrams$tf)
-save(tdm4,file = "tdmquadgrams.RData")
-save(quadgrams,file = "quadgrams.RData")
+save(tdm4,file = "data/tdmquadgrams.RData")
+save(quadgrams,file = "data/quadgrams.RData")
 msg <- paste(n, "quadgrams written to files")
 print (msg)
+rm(tdm4)
 #
 # Determine frequency of pentgrams (sequences of 5 "words") 
 #
@@ -99,16 +111,8 @@ colnames(pentgrams) <- c ("tf","term")
 pentgrams <- pentgrams[order(pentgrams$tf, decreasing=TRUE),]
 head(pentgrams)
 n <- length(pentgrams$tf)
-save(tdm5,file = "tdmpentgrams.RData")
-save(pentgrams,file = "pentgrams.RData")
+save(tdm5,file = "data/tdmpentgrams.RData")
+save(pentgrams,file = "data/pentgrams.RData")
 msg <- paste(n, "pentgrams written to files")
 print (msg)
-
-#n2 <- data.frame(tdm2$v, tdm2$dimnames$Terms, stringsAsFactors = FALSE)
-#colnames(n2) <- c ("tf","term")
-#n2words <- sapply(n2$term, str_split," ",2)
-#n2frame <- data.frame(n2words, stringsAsFactors = FALSE)
-#row.names(n2frame) <- NULL
-#rm(n2words)
-#n2a <- cbind(n2[,1],n2frame)
-#rm(n2,n2frame)
+rm(tdm5)

@@ -1,168 +1,65 @@
-library(knitr)
-library(RCurl)
-library(RWeka)
-library(tm)
-library(ggplot2)
-library(stringr)
-library(gridExtra)
-library(reshape2)
 
-load("unigrams.RData")
-load("bigrams.RData")
-load("trigrams.RData")
-load("quadgrams.RData")
 
-removePunctuationAndForeign <- function(x) 
+calcBackoffScore <- function (df, pattern, ngramcount, nrows = 50, lambda = 0.4)
 {
-    # Keep only letters, numbers and spaces, special treatment for certain apostrophes
-    x <- gsub("n't", "nt", x)
-    x <- gsub("'s", "s", x)
-    x <- gsub("'re", " are", x)
-    x <- gsub("'ve", " have", x)
-    x <- gsub("i'm", "i am", x)
-    x <- gsub("[^[:alnum:][:blank:]]", " ", x)
-    x <- gsub("â", "", x)
-    gsub("[šžþÃàáâãäåçèéêëìíîïðñòóôõöùúûüý¢]+", " ", x)
-}
-
-removeNumbers <- function(x) 
-{
-    gsub("[0-9]+", "", x)
-}
-
-collapseWhiteSpace <- function(x) 
-{
-    x <- gsub(" +"," ", x)
-}
-
-cleanInput <- function (x)
-{
-    x <- removePunctuationAndForeign(x)
-    x <- tolower(x)
-    x <- removeNumbers(x)
-    collapseWhiteSpace(x)    
-}
-
-lastnwords <- function (x,n)
-{
-    words <- unlist(strsplit(x, " "))
-    cnt <- length(words)
-    nbeg <- cnt - n + 1
-    if ((nbeg > 0) && (nbeg <= cnt))
+    mtchterm <- df[grep(pattern,df$first),]
+#    mtchterm <- df[grep(pattern,df$term),]
+    nlen <- length(mtchterm$tf)
+    result <- NULL
+    if (nlen > 0)
     {
-        words <- words[nbeg:cnt]
-        x <- unlist(paste(unlist(words), collapse=" "))
+        denom <- sum(mtchterm$tf)
+        #mtchterm$relfreq <- mtchterm$tf / denom * lambda
+        mtchterm$mle <- mtchterm$tf / denom * lambda
+        #mtchterm$nextword <- unlist(lapply(mtchterm$term, lastnwords, 1))
+        mtchterm$nextword <- mtchterm$lastw
+        # mtchterm4 <- mtchterm4[mtchterm4$nextword != "unk",]
+        #nlen <- length(mtchterm$tf)
+        #if (nlen > 0)
+        #{
+            mtchterm <- mtchterm[order(mtchterm$mle,decreasing=TRUE),]
+            mtchterm <- mtchterm[1:min(nlen,nrows),]
+            result <- data.frame(mtchterm$mle,mtchterm$nextword,stringsAsFactors = FALSE)
+            result$orig <- ngramcount
+#            colnames(result) <- c("relfreq","nextword","orig")
+        #}
     }
-    x
+    rm(mtchterm)
+    result
 }
-inputStrings <- c("A pound of bacon, a bouquet, and a case of pretzels",
-                  "A pound of bacon, a bouquet, and a case of beer",
-                  "A pound of bacon, a bouquet, and a case of cheese",
-                  "A pound of bacon, a bouquet, and a case of soda")
-inputStrings <- c("you follow me  and make  me  the bluest",
-                  "you follow me  and make  me  the smelliest",
-                  "you follow me  and make  me  the happiest",
-                  "you follow me  and make  me  the saddest"
-                  )
-inputStrings <- c("offense still struggling but  the players",
-                  "offense still struggling but  the crowd",
-                  "offense still struggling but  the referees",
-                  "offense still struggling but  the defense"
-)
-inputStrings <- c("Go on a romantic date at the grocery",
-                  "Go on a romantic date at the beach",
-                  "Go on a romantic date at the movies",
-                  "Go on a romantic date at the mall"
-)
 
-allstrings <- c(
-                  "follow me please? It would mean the",
-                  "you follow me  and make  me  the ",
-                  "offense still struggling but  the",
-                  "Go on a romantic date at the",
-                  "I'll dust them off and be on my",
-                  "Love that filem and haven't seen it in quite some",
-                  "Louis will push his long, wet hair out of his eyes with his little",
-                  "grateful for the good times and keep the faith during the",
-                  "cutest thing you've ever seen, you must be")
-inputStrings <- unlist(lapply(inputStrings,cleanInput))
-inputStrings
-
-x <- inputStrings[1]
-
-simpleCalc <- function (x, nrows = 10, testing = FALSE)
+simpleBackoffCalc <- function (x, nrows = 50, testing = FALSE)
 {
+    delim <- "[ \r\n\t]+"
     xtra = 0
     if (testing == TRUE)
     {
         xtra = 1
     }
+    result <- data.frame(0,"unk",0,stringsAsFactors = FALSE)
+    colnames(result) <- c("relfreq","nextword","orig")
     mtchstr <- lastnwords(x,3 + xtra)
-    pattern <- paste("^",mtchstr," ", sep="")
-    mtchterm4 <- quadgrams[grep(pattern,quadgrams$term),]
-    nlen <- length(mtchterm4$tf)
-    result <- data.frame(0,"unk","unk",stringsAsFactors = FALSE)
-    colnames(result) <- c("relfreq","word","orig")
-    if (nlen > 0)
+    pattern <- paste("^",mtchstr, delim, sep="")
+    result4 <- calcBackoffScore (quadgrams,pattern,4,lambda = 1)
+    if (!is.null(result4))
     {
-        denom <- sum(mtchterm4$tf)
-        mtchterm4$relfreq <- mtchterm4$tf / denom
-        mtchterm4$word <- unlist(lapply(mtchterm4$term,lastnwords,1))
-        # mtchterm4 <- mtchterm4[mtchterm4$word != "unk",]
-        nlen <- length(mtchterm4$tf)
-        if (nlen > 0)
-        {
-            mtchterm4 <- mtchterm4[order(mtchterm4$relfreq,decreasing=TRUE),]
-            mtchterm4 <- mtchterm4[1:min(nlen,nrows),]
-            result4 <- data.frame(mtchterm4$relfreq,mtchterm4$word,stringsAsFactors = FALSE)
-            result4$orig <- "Quad"
-            colnames(result4) <- c("relfreq","word","orig")
-            result <- rbind(result,result4)
-        }
+        result <- rbind(result,result4)
     }
 
     mtchstr <- lastnwords(x,2 + xtra)
-    pattern <- paste("^",mtchstr," ", sep="")
-    mtchterm3 <- trigrams[grep(pattern,trigrams$term),]
-    nlen <- length(mtchterm3$tf)
-    if (nlen > 0)
+    pattern <- paste("^",mtchstr, delim, sep="")
+    result3 <- calcBackoffScore (trigrams,pattern,3,lambda = 0.4)
+    if (!is.null(result3))
     {
-        denom <- sum(mtchterm3$tf)
-        mtchterm3$relfreq <- mtchterm3$tf / denom * 0.4
-        mtchterm3$word <- unlist(lapply(mtchterm3$term,lastnwords,1))
-        # mtchterm3 <- mtchterm4[mtchterm3$word != "unk",]
-        nlen <- length(mtchterm3$tf)
-        if (nlen > 0)
-        {
-            mtchterm3 <- mtchterm3[order(mtchterm3$relfreq,decreasing=TRUE),]
-            mtchterm3 <- mtchterm3[1:min(nlen,nrows),]
-            result3 <- data.frame(mtchterm3$relfreq,mtchterm3$word,stringsAsFactors = FALSE)
-            result3$orig <- "Tri"
-            colnames(result3) <- c("relfreq","word","orig")
-            result <- rbind(result,result3)
-        }
+        result <- rbind(result,result3)
     }
     
     mtchstr <- lastnwords(x,1 + xtra)
-    pattern <- paste("^",mtchstr," ", sep="")
-    mtchterm2 <- bigrams[grep(pattern,bigrams$term),]
-    nlen <- length(mtchterm2$tf)
-    if (nlen > 0)
+    pattern <- paste("^",mtchstr, delim, sep="")
+    result2 <- calcBackoffScore (bigrams,pattern,2,lambda = 0.4)
+    if (!is.null(result2))
     {
-        denom <- sum(mtchterm2$tf)
-        mtchterm2$relfreq <- mtchterm2$tf / denom * 0.4
-        mtchterm2$word <- unlist(lapply(mtchterm2$term,lastnwords,1))
-        # mtchterm2 <- mtchterm2[mtchterm2$word != "unk",]
-        nlen <- length(mtchterm2$tf)
-        if (nlen > 0)
-        {
-            mtchterm2 <- mtchterm2[order(mtchterm2$relfreq,decreasing=TRUE),]
-            mtchterm2 <- mtchterm2[1:min(nlen,nrows),]
-            result2 <- data.frame(mtchterm2$relfreq,mtchterm2$word,stringsAsFactors = FALSE)
-            result2$orig <- "Bi"
-            colnames(result2) <- c("relfreq","word","orig")
-            result <- rbind(result,result2)
-        }
+        result <- rbind(result,result2)
     }
     if (testing == TRUE)
     {
@@ -174,23 +71,289 @@ simpleCalc <- function (x, nrows = 10, testing = FALSE)
         {
             denom <- sum(unigrams$tf)
             mtchterm1$relfreq <- mtchterm1$tf / denom * 0.4
-            mtchterm1$word <- mtchstr
-            result1 <- data.frame(mtchterm1$relfreq,mtchterm1$word,stringsAsFactors = FALSE)
-            result1$orig <- "Uni"
-            colnames(result1) <- c("relfreq","word","orig")
+            mtchterm1$nextword <- mtchstr
+            result1 <- data.frame(mtchterm1$relfreq,mtchterm1$nextword,stringsAsFactors = FALSE)
+            result1$orig <- 1
+            colnames(result1) <- c("relfreq","nextword","orig")
             result <- rbind(result,result1)
         }
     }
-    result <- result[result$word != "unk",] 
+    result <- result[result$nextword != "unk",] 
     result[order(result$relfreq,decreasing = TRUE),]
 #    head(mtchterm2[order(mtchterm2$relfreq,decreasing=TRUE),])
 }
 
-nstr <- length(inputStrings)
-testmode = TRUE
-for (i in 1:nstr)
+calcSGTScore <- function (df, pattern, ngramcount, nrows = 250, lambda = 0.4)
 {
-    nextwords <- simpleCalc(inputStrings[i],10, testmode)
-    n <- min(length(nextwords$relfreq),5)
-    print(nextwords[1:n,])
+    mtchterm <- df[grep(pattern,df$first),]
+    nlen <- length(mtchterm$rstar)
+    result <- NULL
+    if (nlen > 0)
+    {
+        denom <- sum(mtchterm$tf)
+        mtchterm$mle <- mtchterm$rstar / denom
+        mtchterm$nextword <- mtchterm$lastw
+        mtchterm <- mtchterm[order(mtchterm$mle,decreasing=TRUE),]
+        mtchterm <- mtchterm[1:min(nlen,nrows),]
+        result <- data.frame(mtchterm$mle,mtchterm$nextword,stringsAsFactors = FALSE)
+        result$orig <- ngramcount
+        colnames(result) <- c("mle","nextword","orig")
+    }
+    rm(mtchterm)
+    result
 }
+
+simpleWithSGT <- function (x, nrows = 250, testing = FALSE)
+{
+    delim <- "[ \r\n\t]*"
+    xtra = 0
+    if (testing == TRUE)
+    {
+        xtra = 1
+    }
+    result <- data.frame("unk",0, 0,stringsAsFactors = FALSE)
+    colnames(result) <- c("nextword","mle", "orig")
+    mtchstr <- lastnwords(x,3 + xtra)
+    pattern <- paste("^",mtchstr, delim, "$", sep="")
+    result4 <- calcSGTScore (quadgrams,pattern,4)
+    if (!is.null(result4))
+    {
+        colnames(result4) <- c("mle4","nextword","orig4")
+        result <- merge(result,result4, by = "nextword", all = TRUE)
+    }
+    else
+    {
+        result$mle4 <- 0
+    }
+    
+    mtchstr <- lastnwords(x,2 + xtra)
+    pattern <- paste("^",mtchstr, delim, "$", sep="")
+    result3 <- calcSGTScore (trigrams,pattern,3)
+    if (!is.null(result3))
+    {
+        colnames(result3) <- c("mle3","nextword","orig3")
+        result <- merge(result,result3, by = "nextword", all = TRUE)
+    }
+    else
+    {
+        result$mle3 <- 0
+    }
+    
+
+    mtchstr <- lastnwords(x,1 + xtra)
+    pattern <- paste("^",mtchstr, delim, "$", sep="")
+    result2 <- calcSGTScore (bigrams,pattern,2)
+    if (!is.null(result2))
+    {
+        colnames(result2) <- c("mle2","nextword","orig2")
+        result <- merge(result,result2, by = "nextword", all = TRUE)
+    }
+    else
+    {
+        result$mle2 <- 0
+    }
+
+    result <- result[result$nextword != "unk",] 
+    p0 <- 0.030557288
+    result$mle1 <- p0
+    if (testing == TRUE)
+    {
+        mtchstr <- lastnwords(x,1)
+        mtchterm1 <- unigrams[grep(mtchstr,unigrams$term),]
+        nlen <- length(mtchterm1$tf)
+        if (nlen > 0)
+        {
+            denom <- sum(unigrams$tf)
+            mtchterm1$mle <- mtchterm1$tf / denom
+            mtchterm1$nextword <- mtchstr
+            result1 <- data.frame(mtchterm1$mle,mtchterm1$nextword,stringsAsFactors = FALSE)
+            result1$orig <- 1
+            colnames(result1) <- c("mle","nextword","orig")
+            result <- merge(result,result1, by = 2)
+        }
+    }
+    else
+    {
+        nwords <- length(result$nextword)
+        for (i in 1:nwords)
+        {
+         
+            theword <- unigrams[unigrams$lastw == result$nextword[i],] 
+            if (nrow(theword) > 0)
+            {
+                result$mle1[i] <- theword$p[1]
+            }
+            
+        }
+    }
+    lambda1 <- 0.01
+    lambda2 <- 0.1
+    lambda3 <- 0.29
+    lambda4 <- 0.5
+    result[is.na(result)] <- 0
+    result$mle <- (result$mle1 * lambda1) + (result$mle2 * lambda2) + (result$mle3 * lambda3) + (result$mle4 * lambda4)
+    result[order(result$mle,decreasing = TRUE),]
+    #    head(mtchterm2[order(mtchterm2$relfreq,decreasing=TRUE),])
+}
+
+
+findWords <- function (x, nrows = 250, testing = FALSE, useSimple = TRUE)
+{
+    lambda1 <- 1
+    lambda2 <- 1
+    lambda3 <- 1
+    lambda4 <- 1
+    lambda5 <- 1
+    delim <- "[ \r\n\t]*"
+    xtra = 0
+    if (testing == TRUE)
+    {
+        xtra = 1
+    }
+    result <- data.frame("unk",0, 0,stringsAsFactors = FALSE)
+    colnames(result) <- c("nextword","mle", "orig")
+    mtchstr <- lastnwords(x,4 + xtra)
+    pattern <- paste("^",mtchstr, delim, "$", sep="")
+    if (useSimple == TRUE)
+    {
+        result5 <- calcBackoffScore (pentgrams,pattern,5, lambda = 0.4)
+    }
+    else
+    {
+        result5 <- calcSGTScore (pentgrams,pattern,5)
+    }
+#    browser()
+    if (!is.null(result5))
+    {
+        colnames(result5) <- c("mle5","nextword","orig5")
+        result <- merge(result,result5, by = "nextword", all = TRUE)
+        lambda4 <- 0
+        lambda3 <- 0
+        lambda2 <- 0
+    }
+    else
+    {
+        result$mle5 <- 0
+    }
+    
+    mtchstr <- lastnwords(x,3 + xtra)
+    pattern <- paste("^",mtchstr, delim, "$", sep="")
+    if (useSimple == TRUE)
+    {
+        result4 <- calcBackoffScore (quadgrams,pattern,4, lambda = 0.3)
+    }
+    else
+    {
+        result4 <- calcSGTScore (quadgrams,pattern,4)
+    }
+    #    browser()
+    if (!is.null(result4))
+    {
+        colnames(result4) <- c("mle4","nextword","orig4")
+        result <- merge(result,result4, by = "nextword", all = TRUE)
+        lambda3 <- 0
+        lambda2 <- 0
+    }
+    else
+    {
+        result$mle4 <- 0
+    }
+    
+    mtchstr <- lastnwords(x,2 + xtra)
+    pattern <- paste("^",mtchstr, delim, "$", sep="")
+    if (useSimple == TRUE)
+    {
+        result3 <- calcBackoffScore (trigrams,pattern,3, lambda = 0.2)
+    }
+    else
+    {
+        result3 <- calcSGTScore (trigrams,pattern,3)
+    }
+    if (!is.null(result3))
+    {
+        colnames(result3) <- c("mle3","nextword","orig3")
+        result <- merge(result,result3, by = "nextword", all = TRUE)
+        lambda2 <- 0
+    }
+    else
+    {
+        result$mle3 <- 0
+    }
+    
+    
+    mtchstr <- lastnwords(x,1 + xtra)
+    pattern <- paste("^",mtchstr, delim, "$", sep="")
+    if (useSimple == TRUE)
+    {
+        result2 <- calcBackoffScore (bigrams,pattern,2, lambda = 0.1)
+    }
+    else
+    {
+        result2 <- calcSGTScore (bigrams,pattern,2)
+    }
+    if (!is.null(result2))
+    {
+        colnames(result2) <- c("mle2","nextword","orig2")
+        result <- merge(result,result2, by = "nextword", all = TRUE)
+    }
+    else
+    {
+        result$mle2 <- 0
+    }
+    
+    result <- result[result$nextword != "unk",] 
+    p0 <- 0.030557288
+    result$mle1 <- p0
+    if (testing == TRUE)
+    {
+        mtchstr <- lastnwords(x,1)
+        mtchterm1 <- unigrams[grep(mtchstr,unigrams$term),]
+        nlen <- length(mtchterm1$tf)
+        if (nlen > 0)
+        {
+            denom <- sum(unigrams$tf)
+            mtchterm1$mle <- mtchterm1$tf / denom
+            mtchterm1$nextword <- mtchstr
+            result1 <- data.frame(mtchterm1$mle,mtchterm1$nextword,stringsAsFactors = FALSE)
+            result1$orig <- 1
+            colnames(result1) <- c("mle","nextword","orig")
+            result <- merge(result,result1, by = 2)
+        }
+    }
+    else
+    {
+        nwords <- length(result$nextword)
+        for (i in 1:nwords)
+        {
+            theword <- unigrams[unigrams$lastw == result$nextword[i],] 
+            if (nrow(theword) > 0)
+            {
+                result$mle1[i] <- theword$p[1]
+                lambda1 <- 1
+            }
+        }
+    }
+    result[is.na(result)] <- 0
+    if (useSimple == TRUE)
+    {
+        result$mle <- (result$mle2 * lambda2) + 
+                        (result$mle3 * lambda3) + 
+                        (result$mle4 * lambda4) + 
+                        (result$mle5 * lambda5)
+    }
+    else
+    {
+        lambda1 <- 0.01
+        lambda2 <- 0.15
+        lambda3 <- 0.2
+        lambda4 <- 0.24
+        lambda5 <- 0.4
+        result$mle <- (result$mle5 * lambda5)
+        result$mle <- result$mle + (result$mle4 * lambda4)
+        result$mle <- result$mle + (result$mle3 * lambda3)
+        result$mle <- result$mle + (result$mle2 * lambda2)
+        result$mle <- result$mle + (result$mle1 * lambda1)
+    }
+    result[order(result$mle,result$mle4,result$mle3,result$mle2,decreasing = TRUE),]
+}
+
