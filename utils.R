@@ -4,11 +4,27 @@ doApostrophes <- function(x)
     x <- gsub("\xe2\x80\x9c","",x)
     x <- gsub("\xe2\x80\x9d","",x)
     x <- gsub("\xe2"," ",x)
-    x <- gsub("n't", "nt ", x)
-    x <- gsub("'s", "s ", x)
+    x <- gsub("won't", "will not ", x)
+    x <- gsub("n't", " not ", x)
+    x <- gsub("'d", " would ", x)
+    x <- gsub("'ll", " will ", x)
+    x <- gsub("it's", " it is ", x)
+    x <- gsub("let's", " let us ", x)
+    x <- gsub("who's", " who is ", x)
+    x <- gsub("she's", " she is ", x)
+    x <- gsub("he's", " he is ", x)
+    x <- gsub("there's", " there is ", x)
+    x <- gsub("where's", " where is ", x)
+    x <- gsub("here's", " here is ", x)
+    x <- gsub("that's", " that is ", x)
+    x <- gsub("what's", " what is ", x)
+    x <- gsub("'s", " possesivess ", x)
+    x <- gsub("s'", "s ", x)
     x <- gsub("'re", " are ", x)
     x <- gsub("'ve", " have ", x)
     x <- gsub("i'm", "i am ", x)
+    x <- gsub("'", " ", x)
+    x <- gsub(" possesivess ", " 's ", x)
     x
 }
 
@@ -22,9 +38,9 @@ doURLsAndEmail <- function(x)
 
 removePunctuation <- function(x) 
 {
-    # Keep only letters, numbers and spaces
+    # Keep only letters, numbers, remaining quotes and spaces
     x  <- gsub("-","",x)
-    gsub("[^[:alnum:][:blank:]]", " ", x)
+    gsub("[^[:alnum:][:blank:]']", " ", x)
 }
 
 removeNumbers <- function(x) 
@@ -39,10 +55,10 @@ collapseWhiteSpace <- function(x)
 
 cleanInput <- function (x)
 {
+    x <- gsub("[\x80-\xff]+","",x)
     x <- tolower(x)
     x <- doURLsAndEmail(x)
     x <- doApostrophes(x)
-    x <- gsub("[\x80-\xff]+","",x)
 #    x <- gsub("[šžþÃàáâãäâåçèéêëìíîïðñòóôõöùúûüý¢]+", " ", x)
     x <- removePunctuation(x)
     x <- removeNumbers(x)

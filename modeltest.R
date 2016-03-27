@@ -24,16 +24,17 @@ load("data/quadgramsSGT.RData")
 load("data/pentgramsSGT.RData")
 unigrams <- ngrams1[ngrams1$tf > 5,]
 rm(ngrams1)
-bigrams <- ngrams2[ngrams2$tf > 3,]
+bigrams <- ngrams2[ngrams2$tf > 2,]
 rm(ngrams2)
 trigrams <- ngrams3[ngrams3$tf > 1,]
 rm(ngrams3)
 quadgrams <- ngrams4[ngrams4$tf > 1,]
 rm(ngrams4)
-pentgrams <- ngrams5[ngrams5$tf > 1,]
+#pentgrams <- ngrams5[ngrams5$tf > 1,]
+pentgrams <- ngrams5
 rm(ngrams5)
 
-
+#Quiz 2
 inputStrings <- c("A pound of bacon, a bouquet, and a case of pretzels",
                   "A pound of bacon, a bouquet, and a case of beer",
                   "A pound of bacon, a bouquet, and a case of cheese",
@@ -53,17 +54,7 @@ inputStrings <- c("Go on a romantic date at the grocery",
                   "Go on a romantic date at the movies",
                   "Go on a romantic date at the mall"
 )
-inputStrings <- c(
-    "pound bacon, bouquet, case",
-    "follow please? mean",
-    "follow make",
-    "offense still struggling",
-    "Go romantic date",
-    "dust",
-    "Love that film and haven't seen it in quite some",
-    "Louis will push his long, wet hair out of his eyes with his little",
-    "grateful for the good times and keep the faith during the",
-    "cutest thing you've ever seen, you must be")
+#Quiz 2
 inputStrings <- c(
     "a pound of bacon, a bouquet, and a case of",
     "follow me please? It would mean the",
@@ -75,18 +66,103 @@ inputStrings <- c(
     "Louis will push his long, wet hair out of his eyes with his little",
     "grateful for the good times and keep the faith during the",
     "cutest thing you've ever seen, you must be")
-
+# Quiz 3
+#inputStrings <- c(
+#    "I'll be there for you, I'd live and I'd sleep",
+#    "I'll be there for you, I'd live and I'd die",
+#    "I'll be there for you, I'd live and I'd eat",
+#    "I'll be there for you, I'd live and I'd give"
+#)
+# inputStrings <- c(
+    # "and he started telling me about his horticultural",
+    # "and he started telling me about his marital",
+    # "and he started telling me about his spiritual",
+    # "and he started telling me about his financial"
+# )
+# inputStrings <- c(
+    # "I'd give anything to see arctic monkeys this weekend",
+    # "I'd give anything to see arctic monkeys this decade",
+    # "I'd give anything to see arctic monkeys this month",
+    # "I'd give anything to see arctic monkeys this morning"
+# )
+# inputStrings <- c(
+    # "same effect as a hug and helps reduce your sleepiness",
+    # "same effect as a hug and helps reduce your hunger",
+    # "same effect as a hug and helps reduce your stress",
+    # "same effect as a hug and helps reduce your happiness"
+# )
+# inputStrings <- c(
+    # "inch away from me but you hadn't time to take a minute",
+    # "inch away from me but you hadn't time to take a walk",
+    # "inch away from me but you hadn't time to take a look",
+    # "inch away from me but you hadn't time to take a picture"
+# )
+# inputStrings <- c(
+    # "a presentation of evidence, and a jury to settle the account",
+    # "a presentation of evidence, and a jury to settle the case",
+    # "a presentation of evidence, and a jury to settle the incident",
+    # "a presentation of evidence, and a jury to settle the matter"
+# )
+# inputStrings <- c(
+    # "an uneven number of bags of groceries in each hand",
+    # "an uneven number of bags of groceries in each toe",
+    # "an uneven number of bags of groceries in each arm",
+    # "an uneven number of bags of groceries in each finger"
+# )
+# inputStrings <- c(
+    # "perfect from the bottom to the side",
+    # "perfect from the bottom to the center",
+    # "perfect from the bottom to the middle",
+    # "perfect from the bottom to the top"
+# )
+# inputStrings <- c(
+    # "filled with imagination and bruises from playing daily",
+    # "filled with imagination and bruises from playing inside",
+    # "filled with imagination and bruises from playing weekly",
+    # "filled with imagination and bruises from playing outside"
+# )
+# inputStrings <- c(
+    # "same people are in almost all of Adam Sandler's",
+    # "same people are in almost all of Adam Sandler's",
+    # "same people are in almost all of Adam Sandler's",
+    # "same people are in almost all of Adam Sandler's"
+# )
+inputStrings <- c(
+    "a pound of bacon, a bouquet, and a case of",
+    "follow me please? It would mean the",
+    "you follow me  and make  me  the ",
+    "offense still struggling but  the",
+    "Go on a romantic date at the",
+    "I'll dust them off and be on my",
+    "Love that film and haven't seen it in quite some",
+    "Louis will push his long, wet hair out of his eyes with his little",
+    "grateful for the good times and keep the faith during the",
+    "cutest thing you've ever seen, you must be",
+    "I'll be there for you, I'd live and I'd",
+    "and he started telling me about his",
+    "I'd give anything to see arctic monkeys this",
+    "same effect as a hug and helps reduce your",
+    "inch away from me but you hadn't time to take a",
+    "a presentation of evidence, and a jury to settle the",
+    "an uneven number of bags of groceries in each",
+    "perfect from the bottom to the",
+    "filled with imagination and bruises from playing",
+    "same people are in almost all of Adam Sandler's")
 inputStrings <- cleanInput(inputStrings)
 inputStrings
 
 nstr <- length(inputStrings)
 #nstr <- 3
-# testmode = TRUE
+#testmode = TRUE
 testmode = FALSE
 simpleBackoff <- TRUE
 for (i in 1:nstr)
 {
-    nextwords <- findWords (inputStrings[i],10, testmode, simpleBackoff)
+    if (i == 10)
+    {
+#        browser()
+    }
+    nextwords <- findWords (inputStrings[i], 10, testmode, simpleBackoff)
     n <- min(length(nextwords$nextword),50)
     msg <- paste (i, " string processed (Simple Backoff",inputStrings[i])
     print (msg)
