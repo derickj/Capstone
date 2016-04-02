@@ -21,7 +21,7 @@ load("data/unigramsSGT.RData")
 load("data/bigramsSGT.RData")
 load("data/trigramsSGT.RData")
 load("data/quadgramsSGT.RData")
-load("data/pentgramsSGT.RData")
+#load("data/pentgramsSGT.RData")
 unigrams <- ngrams1[ngrams1$tf > 5,]
 rm(ngrams1)
 bigrams <- ngrams2[ngrams2$tf > 2,]
@@ -31,8 +31,8 @@ rm(ngrams3)
 quadgrams <- ngrams4[ngrams4$tf > 1,]
 rm(ngrams4)
 #pentgrams <- ngrams5[ngrams5$tf > 1,]
-pentgrams <- ngrams5
-rm(ngrams5)
+#pentgrams <- ngrams5
+#rm(ngrams5)
 
 #Quiz 2
 inputStrings <- c("A pound of bacon, a bouquet, and a case of pretzels",
@@ -122,10 +122,10 @@ inputStrings <- c(
     # "filled with imagination and bruises from playing outside"
 # )
 # inputStrings <- c(
-    # "same people are in almost all of Adam Sandler's",
-    # "same people are in almost all of Adam Sandler's",
-    # "same people are in almost all of Adam Sandler's",
-    # "same people are in almost all of Adam Sandler's"
+    # "same people are in almost all of Adam Sandler's pictures",
+    # "same people are in almost all of Adam Sandler's movies",
+    # "same people are in almost all of Adam Sandler's stories",
+    # "same people are in almost all of Adam Sandler's films"
 # )
 inputStrings <- c(
     "a pound of bacon, a bouquet, and a case of",
@@ -148,27 +148,26 @@ inputStrings <- c(
     "perfect from the bottom to the",
     "filled with imagination and bruises from playing",
     "same people are in almost all of Adam Sandler's")
+#inputStrings <- c("Go on a romantic date at the grocery",
+#                  "Go on a romantic date at the beach",
+#                  "Go on a romantic date at the movies",
+#                  "Go on a romantic date at the mall"
+#)
 inputStrings <- cleanInput(inputStrings)
 inputStrings
 
 nstr <- length(inputStrings)
 #nstr <- 3
-#testmode = TRUE
-testmode = FALSE
 simpleBackoff <- TRUE
 for (i in 1:nstr)
 {
-    if (i == 10)
-    {
-#        browser()
-    }
-    nextwords <- findWords (inputStrings[i], 10, testmode, simpleBackoff)
-    n <- min(length(nextwords$nextword),50)
+    nextwords <- findWords (inputStrings[i], 10, simpleBackoff)
+    n <- min(length(nextwords$nextword),10)
     msg <- paste (i, " string processed (Simple Backoff",inputStrings[i])
     print (msg)
     print(nextwords[1:n,])
-    nextwords <- findWords (inputStrings[i],10, testmode, FALSE)
-    n <- min(length(nextwords$nextword),50)
+    nextwords <- findWords (inputStrings[i],10, FALSE)
+    n <- min(length(nextwords$nextword),10)
     msg <- paste (i, " string processed (SGT & interpolation)",inputStrings[i])
     print (msg)
     print(nextwords[1:n,])

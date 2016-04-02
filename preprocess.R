@@ -1,8 +1,7 @@
 library(RCurl)
-# library(tm)
+library(tm)
 
 source("utils.R")
-
 #
 # Read the data from the files, clean and write to new files
 #
@@ -17,6 +16,10 @@ cleantext <- readLines(trainfile)
 #
 cleantext <- cleanInput(cleantext)
 cleanfile <- "data/cleantext.txt"
+writeLines(cleantext, cleanfile, useBytes = TRUE)
+
+cleantext <- cleanInput(cleantext, TRUE)
+cleanfile <- "data/trainnostop.txt"
 writeLines(cleantext, cleanfile, useBytes = TRUE)
 
 testfile <- "data/testtext.txt"

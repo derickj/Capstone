@@ -48,20 +48,37 @@ removeNumbers <- function(x)
     gsub("[0-9]+", "", x)
 }
 
+#removeOneWord <- function(w,x) 
+#{
+#    delim <- "[ \r\n\t]+"
+#    pattern <- paste(delim,w,delim,sep="")
+#    gsub(pattern," ",x)
+#}    
+#removeStopWords <- function(x) 
+#{
+#    browser()
+#    stopw <- stopwords(kind = "en")
+#    removeOneWord(stopw[1],x)
+#    x
+#}
+
 collapseWhiteSpace <- function(x) 
 {
     gsub(" +"," ", x)
 }
 
-cleanInput <- function (x)
+cleanInput <- function (x, removeStop = FALSE)
 {
     x <- gsub("[\x80-\xff]+","",x)
     x <- tolower(x)
     x <- doURLsAndEmail(x)
     x <- doApostrophes(x)
-#    x <- gsub("[šžþÃàáâãäâåçèéêëìíîïðñòóôõöùúûüý¢]+", " ", x)
     x <- removePunctuation(x)
     x <- removeNumbers(x)
+    if (removeStop == TRUE)
+    {
+#        x <- removeStopWords(x)
+    }
     collapseWhiteSpace(x)
 }
 
