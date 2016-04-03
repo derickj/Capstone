@@ -11,6 +11,7 @@ if(!file.exists(trainfile)) {
     stop(msg)
 }
 cleantext <- readLines(trainfile)
+source("seed.R")
 #
 # Function to strip out punctuation and foreign characters, convert to lower case, remove numbers, strip extra whitespace
 #

@@ -34,10 +34,11 @@ if (length(files)<1)
 #
 # Set a seed so that the sampling is reproducible and randomly select 5% of the data strings for inclusion
 #
-#set.seed(12321)
+set.seed(12321)
 #set.seed(42)
-set.seed(6007)
-samplesize <- 0.03
+#set.seed(6007)
+#set.seed(9115)
+samplesize <- 0.05
 #
 # Cycle through the list of file names, reading each file as binary before converting to ASCII
 #
@@ -75,5 +76,5 @@ trainfile <- "data/traintext.txt"
 writeLines(traindata,trainfile,useBytes = TRUE)
 writeLines(testdata,"data/testtext.txt",useBytes = TRUE)
 writeLines(validata,"data/valitext.txt",useBytes = TRUE)
-rm(traindata,testdata,validata,textvector,samplendx)
+rm(traindata,testdata,validata,tvdata, textvector,samplendx)
 

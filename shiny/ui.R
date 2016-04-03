@@ -16,26 +16,29 @@ shinyUI(fluidPage(theme = "bootstrap.css",
     
     sidebarLayout(
         
-        # Sidebar with a slider input
+        # Sidebar with inputs
         sidebarPanel(
             textInput(inputId = "inputphrase",
-                      label = "Enter a phrase to predict next word",
+                      label = "Enter a phrase and click <Predict> to predict next word",
                       value = "",
                       width = '500px'),
-            checkboxInput(inputId = "filteron", 
+            actionButton("go", "Predict"),
+            checkboxInput(inputId = "ifilteron", 
                           label = "Profanity filtering on?", 
                           value = TRUE),
-            actionButton("go", "Predict")
+            checkboxInput(inputId = "iverbose", 
+                          label = "Verbose mode (to see MLEs)?", 
+                          value = FALSE),
+            sliderInput(inputId = "inwords", 
+                        label = "Max number of words to return?", 
+                        min=3, max=10, value=5)
         ),
-        # Show a plot of the generated distribution
+        # Show the output together with the input phrase
         mainPanel(
             tabsetPanel(
-                tabPanel("Predict",  
+                tabPanel("Input phrase",  
                          verbatimTextOutput("oinput"),
-                         "Profanity filtering set to ",  
-                         verbatimTextOutput("ofilter"),
                          "The next potential words are:",
-#                         verbatimTextOutput("owords")),
                         tableOutput("otable")),
                 tabPanel("Instructions", includeMarkdown("README.md"))
             )

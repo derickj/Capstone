@@ -9,30 +9,18 @@ library(reshape2)
 source("utils.R")
 source("model.R")
 
-#load("data/unigrams.RData")
-#load("data/bigrams.RData")
-#load("data/trigrams.RData")
-#load("data/quadgrams.RData")
-#unigrams <- unigrams[unigrams$tf > 3,]
-#bigrams <- bigrams[bigrams$tf > 3,]
-#trigrams <- trigrams[trigrams$tf > 2,]
-#quadgrams <- quadgrams[quadgrams$tf > 2,]
 load("data/unigramsSGT.RData")
 load("data/bigramsSGT.RData")
 load("data/trigramsSGT.RData")
 load("data/quadgramsSGT.RData")
-#load("data/pentgramsSGT.RData")
-unigrams <- ngrams1[ngrams1$tf > 5,]
+unigrams <- ngrams1
 rm(ngrams1)
-bigrams <- ngrams2[ngrams2$tf > 2,]
+bigrams <- ngrams2
 rm(ngrams2)
-trigrams <- ngrams3[ngrams3$tf > 1,]
+trigrams <- ngrams3
 rm(ngrams3)
-quadgrams <- ngrams4[ngrams4$tf > 1,]
+quadgrams <- ngrams4
 rm(ngrams4)
-#pentgrams <- ngrams5[ngrams5$tf > 1,]
-#pentgrams <- ngrams5
-#rm(ngrams5)
 
 #Quiz 2
 inputStrings <- c("A pound of bacon, a bouquet, and a case of pretzels",
@@ -148,16 +136,10 @@ inputStrings <- c(
     "perfect from the bottom to the",
     "filled with imagination and bruises from playing",
     "same people are in almost all of Adam Sandler's")
-#inputStrings <- c("Go on a romantic date at the grocery",
-#                  "Go on a romantic date at the beach",
-#                  "Go on a romantic date at the movies",
-#                  "Go on a romantic date at the mall"
-#)
 inputStrings <- cleanInput(inputStrings)
 inputStrings
 
 nstr <- length(inputStrings)
-#nstr <- 3
 simpleBackoff <- TRUE
 for (i in 1:nstr)
 {

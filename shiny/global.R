@@ -14,11 +14,14 @@ load("unigramsSGT.RData")
 load("bigramsSGT.RData")
 load("trigramsSGT.RData")
 load("quadgramsSGT.RData")
-unigrams <- ngrams1[ngrams1$tf > 5,]
+unigrams <- ngrams1
 rm(ngrams1)
-bigrams <- ngrams2[ngrams2$tf > 2,]
+bigrams <- ngrams2
 rm(ngrams2)
-trigrams <- ngrams3[ngrams3$tf > 1,]
+trigrams <- ngrams3
 rm(ngrams3)
-quadgrams <- ngrams4[ngrams4$tf > 1,]
+quadgrams <- ngrams4
 rm(ngrams4)
+
+badwords <- readLines("bad-words.txt")
+

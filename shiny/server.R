@@ -20,14 +20,8 @@ source("model.R")
 
 shinyServer(
   function(input, output) {
-#    msg <- reactive({
-#        x <- cleanInput(input$inputphrase)
-#        nextwords <- findWords (x , 3, FALSE)
-#        msg <- paste(nextwords$nextword[1:3],sep = " ")
-#        msg
-#    })
-    dofilter <- eventReactive (input$filteron, {
-        if (input$filteron == TRUE)
+    dofilter <- eventReactive (input$ifilteron, {
+        if (input$ifilteron == TRUE)
         {
             cleanWords <- TRUE
         }
@@ -37,19 +31,40 @@ shinyServer(
         }
         cleanWords
     })
+    doverbose <- eventReactive (input$iverbose, {
+        if (input$iverbose == TRUE)
+        {
+            verbose <- TRUE
+        }
+        else
+        {
+            verbose <- FALSE
+        }
+        verbose
+    })
+    dowords <- eventReactive (input$inwords, {
+            nwords <- input$inwords
+        nwords
+    })
     predictWords <- eventReactive(input$go, {
               x <- cleanInput(input$inputphrase)
-              nextwords <- findWords (x , 3, FALSE)
+              nextwords <- findWords (x, dowords(), FALSE)
               if (dofilter() ==  TRUE)
               {
+                  if (nrow (nextwords[nextwords$nextword %in% badwords, ]) > 0)
+                  {
+                      nextwords[nextwords$nextword %in% badwords, ]$nextword <- "%$@!*"
+                  }
               }
-#              msg <- paste(nextwords$nextword[1:3],sep = " ")
-#              msg
-              nextwords[1:5,]
+              if (doverbose() == FALSE)
+              {
+                  nextwords <- data.frame (nextwords$nextword)
+                  colnames(nextwords) <- c("nextword")
+              }
+              nextwords
     })
     output$oinput <- renderPrint (input$inputphrase)
-    output$ofilter <- renderPrint (input$filteron)
-#    output$owords <- renderPrint (predictWords())
+    output$ofilter <- renderPrint (input$ifilteron)
     output$otable <- renderTable (predictWords())
   }
 )
