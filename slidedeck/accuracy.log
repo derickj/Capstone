@@ -1,0 +1,6 @@
+Overall top-3 score:     15.84 %
+Overall top-1 precision: 11.21 %
+Overall top-3 precision: 20.15 %
+Average runtime:         326.79 msec
+Number of predictions:   28464
+Total memory used:       17.83 MB

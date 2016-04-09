@@ -1,0 +1,62 @@
+Coursera Data Science Capstone Project - Text Prediction
+========================================================
+author: derickj
+date:   9 April 2016
+
+Introduction and Help
+========================================================
+- <small>A text prediction app to predict the next word following a phrase of input text</small>
+- <small>Prediction model uses n-grams( 2-, 3- and 4-grams) developed from training data</small>
+- <small>The application is hosted on shinyapps.io at: https://derickj.shinyapps.io/predict</small>
+- <small>To use: Simply type in an incomplete phrase of text and press the `<Predict>` button</small>
+- <small>The maximum number of alternative next words returned is controlled using the slider</small>
+- <small>Profanity filtering is on by default, to switch off - uncheck the checkbox</small>
+- <small>For more info on word probabilities - check the "Verbose" mode checkbox</small>
+
+Algorithm
+========================================================
+- <small>Model uses 4-grams, 3-grams and 2-grams tokenized from clean training data</small>
+- <small>Maximum Likelihood Estimates (MLE) of the next probable words following the input phrase are
+calculated using Good Turing Smoothed counts of the matching n-gram phrases in the model</small>
+- <small>Next word MLE is the interpolation of the MLEs (if any) for matching 4-grams, 3-grams and 2-grams</small> 
+- <small>In case of a tie in MLE value for two words, the frequency of the single words is used to break the tie</small>
+- <small>In case no matching n-grams exist, the most frequent single words in the training data are returned, e.g., at the beginning of a sentence (empty input phrase)</small>
+- <small>If profanity filtering is on (the default), predicted words occurring in the obscene word list are censored (Try a prediction such as "What the" to see it in action)</small>
+
+Accuracy and Memory Usage
+========================================================
+- <small>Model accuracy was benchmarked as follows (adding 5-grams did not make a significant change)</small>
+```{r bench,echo=FALSE}
+writeLines(readLines("accuracy.log"))
+```
+```{r loadlibs,echo=FALSE, results="hide"}
+load("../shiny/unigramsSGT.RData")
+load("../shiny/bigramsSGT.RData")
+load("../shiny/trigramsSGT.RData")
+load("../shiny/quadgramsSGT.RData")
+unigrams <- ngrams1
+rm(ngrams1)
+bigrams <- ngrams2
+rm(ngrams2)
+trigrams <- ngrams3
+rm(ngrams3)
+quadgrams <- ngrams4
+rm(ngrams4)
+badwords <- readLines("../shiny/bad-words.txt")
+```
+- <small>n-gram data is stored as shown for 3-grams, with the (original & SGT Smoothed) counts and proabilities</small>
+```{r ngrams,echo=FALSE}
+head(trigrams,3)
+```
+
+Sampling, Pre-processing and Smoothing
+========================================================
+- <small>5% random sample of lines from each of the (English only) blogs, news and twitter files was taken and combined</small>
+- <small>The sample was again split 70-20-10 into training, test and validation</small>
+- <small>Cleaning text: lower case, removed numbers, special characters and punctuation</small>
+- <small>Tokenization was done using the RWeka library</small>
+- <small>Frequency counts adjusted by Simple Good Turing Smoothing to provide for unseen phrases/words</small>
+- <small>Fitted a linear model to log counts to determine smoothed counts for frequencies > 5</small>
+- <small>To reduce memory usage, 3- and 4- grams occurring once & 2-grams occurring less than 3 times were omitted</small>
+- <small>Only single words occurring more than 5 times were used</small>
+- <small>Continue to: https://derickj.shinyapps.io/predict to try it out</small>

@@ -1,0 +1,83 @@
+---
+title       : "Coursera Data Science Specialization - Capstone Project"
+subtitle    : "Text Prediction using an n-gram model"
+author      : derickj
+job         : Coursera student by night, project leader by day
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow      # 
+widgets     : []            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+knit        : slidify::knit2slides
+--- .class #id 
+
+## Introduction and Help
+
+- A text prediction app to predict the next word following a phrase of input text
+- Prediction model uses n-grams( 2-, 3- and 4-grams) developed from training data
+- The application is hosted on shinyapps.io at: https://derickj.shinyapps.io/predict
+- To use - type in an incomplete phrase of text and press the Predict button
+- The maximum number of words returned is controlled using the slider
+- Profanity filtering is on by default, to switch off - uncheck the checkbox
+- More info on word probabiliies - check the "Verbose" mode checkbox
+
+--- .class #id 
+
+## Algorithm
+
+- The prediction model uses 4-grams, 3-grams and 2-grams tokenized from cleaned training data
+- The Maximum Likelihood Estimate (MLE) of the next probable word following the input phrase is
+calculated using Good Turing Smoothed counts of the number of occurrences of the matching n-gram phrases in the training data
+- Interpolation of the MLEs for matching 4-grams (if any), 3-grams (if any) and 2-grams (if any) is used 
+- In case of a tie in MLE value between interpolated values, the frequency of unigrams (single words) in the model (if any) is used to break the tie
+- In case no matching n-grams exist, the model simply predicts the 3 most frequent single words in the training data, e.g.' at the beginning of a sentence (empty input phrase)
+- If profanity filtering is on (the default), predicted words matching words in the obscene word list are sensored.
+
+--- .class #id 
+
+## Accuracy and Memory Usage
+
+- Model accuracy was benchmarked as follows (adding 5-grams did not make a significant change)
+```{r bench,echo=FALSE}
+writeLines(readLines("accuracy.log"))
+```
+```{r loadlibs,echo=FALSE, results="hide"}
+load("../shiny/unigramsSGT.RData")
+load("../shiny/bigramsSGT.RData")
+load("../shiny/trigramsSGT.RData")
+load("../shiny/quadgramsSGT.RData")
+unigrams <- ngrams1
+rm(ngrams1)
+bigrams <- ngrams2
+rm(ngrams2)
+trigrams <- ngrams3
+rm(ngrams3)
+quadgrams <- ngrams4
+rm(ngrams4)
+badwords <- readLines("../shiny/bad-words.txt")
+```
+- n-gram data is stored as shown for 3-grams, with the (original & SGT Smoothed) counts and proabilities
+```{r ngrams,echo=FALSE}
+head(trigrams,3)
+```
+```{r showdata, echo=FALSE}
+object.size(unigrams)
+object.size(bigrams)
+object.size(trigrams)
+object.size(quadgrams)
+object.size(badwords)
+```
+
+--- .class #id 
+
+## Data Used, Sampling, Pre-processing and Smoothing
+
+- Only the final/en_US data files with blog, news and twitter data were used
+- For profanity filtering, the list of obscene words from CMU was used: http://www.cs.cmu.edu/~biglou/resources/bad-words.txt
+- 5% random sample of lines from each of the blogs, news and twitter data files was taken (to ensure similar coverage of all genres) and combined
+- The sample was again split 70-20-10 into a training, test and validation data sets
+- Preprocessing included cleaning text - lower case, removed numbers, various special characters and punctuation
+- Tokenization was done using the RWeka library
+- Frequency counts adjusted using Simple Good Turning Smoothing to provide for unseen phrases/words (fitted a linear model to log counts to determine smoothed counts for frequencies > 5)
+- To reduce memory usage, 3- and 4- grams occurring only once, 2-grams occurring less than 3 times were omitted.
+- Only single words occurring more than 5 times were used
