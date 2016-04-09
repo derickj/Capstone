@@ -29,4 +29,4 @@ The second part of the assignment was to produce a slide deck (reproducible pitc
 
 The slide deck can be viewed at:
 
-  http://derickj.github.io/predict
+  http://rpubs.com/derickj/predict
