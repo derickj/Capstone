@@ -1,7 +1,7 @@
 Coursera Data Science Capstone Project - Text Prediction
 ========================================================
 author: derickj
-date:   9 April 2016
+date:   10 April 2016
 
 Introduction and Help
 ========================================================
@@ -59,4 +59,11 @@ Sampling, Pre-processing and Smoothing
 - <small>Fitted a linear model to log counts to determine smoothed counts for frequencies > 5</small>
 - <small>To reduce memory usage, 3- and 4- grams occurring once & 2-grams occurring less than 3 times were omitted</small>
 - <small>Only single words occurring more than 5 times were used</small>
+
+Closing Comments
+========================================================
+- <small>Development environment memory restrictions prevented using a larger sample</small>
+- <small>It is expected that by increasing the model size (larger sample), accuracy would be improved</small>
+- <small>Further enhancement would be to dynamically add to n-grams (up to a limit) with actual text typed</small>
+
 - <small>Continue to: https://derickj.shinyapps.io/predict to try it out</small>
